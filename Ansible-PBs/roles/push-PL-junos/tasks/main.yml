@@ -1,0 +1,31 @@
+---
+
+- name: Pull info for config diff
+  napalm_install_config:
+    provider: "{{ cli }}"
+    dev_os: junos
+    config_file: /etc/ansible/build/pl-PL-junos.conf
+    commit_changes: True
+    get_diffs: True
+    diff_file: ./diff/junos/{{ inventory_hostname }}_diff
+
+- name: Grab diff
+  shell: cat ./diff/junos/{{ inventory_hostname }}_diff
+  register: commit_changes
+  changed_when: False
+
+- name: Proposed changes listed below, empty brackets [] denotes no changes.
+  debug: msg="{{ commit_changes.stdout_lines }}"
+
+- pause: prompt='Review proposed changes. Press return to continue. Press Ctrl+c and then "a" to abort'
+
+- name: Implement changes for JUNOS brdr's
+  napalm_install_config:
+    provider: "{{ cli }}"
+    dev_os: junos
+    config_file: /etc/ansible/build/pl-PL-junos.conf
+    commit_changes: True
+    get_diffs: False
+  notify:
+    - get_bgp
+    - Soft_clear_ebgp
