@@ -1,0 +1,5 @@
+---
+- name: Update PL prefix-list from git
+  git:
+    repo: 'https://github.com/<user>/neteng.git'
+    dest: git/neteng
