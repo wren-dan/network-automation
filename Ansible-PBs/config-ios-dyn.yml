@@ -1,0 +1,49 @@
+---
+- name: "Push auth changes to IOS"
+  hosts: ios_lab
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - name: "script_password"
+      prompt: "Enter password for user script"
+      private: yes
+
+  vars:
+
+    - cli:
+        host: "{{ inventory_hostname }}"
+        username: admin
+        password: "{{ script_password }}"
+
+  tasks:
+
+    - name: "Pull data for config diff"
+      napalm_install_config:
+        provider: "{{ cli }}"
+        dev_os: ios
+        config_file: ./tmp/{{ inventory_hostname }}.conf
+        commit_changes: False
+        get_diffs: True
+        diff_file: ./tmp/{{ inventory_hostname }}.diff
+        optional_args: {'inline_transfer': True , 'secret': '{{ script_password }}'}
+
+    - name: Grab diff
+      shell: cat ./tmp/{{ inventory_hostname }}.diff
+      register: commit_changes
+      changed_when: False
+
+    - name: Proposed changes listed below, empty brackets [] denotes no changes.
+      debug: msg="{{ commit_changes.stdout_lines }}"
+
+    - pause: prompt='Review proposed changes. Press return to continue. Press Ctrl+c and then "a" to abort'
+      delegate_to: localhost
+
+    - name: "Implement changes for IOS"
+      napalm_install_config:
+        provider: "{{ cli }}"
+        dev_os: ios
+        config_file: ./tmp/{{ inventory_hostname }}.conf
+        commit_changes: True
+        get_diffs: True
+        optional_args: {'inline_transfer': True , 'secret': '{{ script_password }}'}
