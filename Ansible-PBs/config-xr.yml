@@ -13,7 +13,7 @@
 
     - cli:
         host: "{{ inventory_hostname }}"
-        username: nescript
+        username: script
         password: "{{ script_password }}"
 
   tasks:
