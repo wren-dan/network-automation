@@ -1,0 +1,51 @@
+---
+- name: "Push auth changes to IOS"
+  hosts: ios_lab
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - name: "script_password"
+      prompt: "Enter password for user script"
+      private: yes
+
+  vars:
+
+    - cli:
+        host: "{{ inventory_hostname }}"
+        username: admin
+        password: "{{ script_password }}"
+
+  tasks:
+
+    - name: "Clear out ./tmp folder"
+      file:
+        path: ./tmp
+        state: absent
+      run_once: true
+      delegate_to: localhost
+      changed_when: no
+      check_mode: no
+
+    - name: "re-create tmp folder"
+      file:
+        path: ./tmp
+        state: directory
+      run_once: true
+      delegate_to: localhost
+      changed_when: no
+      check_mode: no
+
+    - name: "Pull lo0 IP data from Routers"
+      napalm_get_facts:
+        provider: "{{ cli }}"
+        dev_os: ios
+        filter: 'interfaces_ip'
+      register: int_ip
+
+    - name: "Build Router config files from Template"
+      template:
+        src: "./templates/ios-lo0_auth.j2"
+        dest: "./tmp/{{ inventory_hostname }}.conf"
+      changed_when: no
+      check_mode: no
