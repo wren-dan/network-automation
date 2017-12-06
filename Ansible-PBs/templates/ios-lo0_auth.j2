@@ -1,0 +1,13 @@
+{% for key,parent_dict_item in int_ip.ansible_facts.interfaces_ip.iteritems() %}
+{% for key2,nested_value1 in parent_dict_item.iteritems() %}
+{% for key3,nested_value2 in nested_value1.iteritems() %}
+{% if key2 == 'ipv4' and key == 'Loopback0' %}
+no tacacs-server host <IP>
+tacacs-server host <IP>
+ip access-list extended copp-tacacs
+ permit tcp host <IP> host {{ key3 }} established
+ no permit tcp host <IP> host {{ key3 }} established
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endfor %}
