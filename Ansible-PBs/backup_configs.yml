@@ -1,0 +1,46 @@
+---
+- name: "grab config backups"
+  hosts: all
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - name: "script_password"
+      prompt: "Enter password for user script"
+      private: yes
+
+  vars:
+
+    - cli:
+        host: "{{ inventory_hostname }}"
+        username: admin
+        password: "{{ script_password }}"
+
+  tasks:
+
+    - name: backup configs for junos
+      junos_config:
+        lines:
+          - exit
+        provider: "{{ cli }}"
+        backup: yes
+      when: "'junos_lab' in group_names"
+
+    - name: backup configs for ios
+      ios_config:
+        lines:
+          - exit
+        provider: "{{ cli }}"
+        backup: yes
+      when: "'ios_lab' in group_names"
+
+    - name: backup configs for xr
+      iosxr_config:
+        lines:
+          - exit
+        provider: "{{ cli }}"
+        backup: yes
+      when: ( 'iosxr4x_lab' in group_names or 'iosxr5x_lab' in group_names or 'iosxr6x_lab' in group_names )
+
+    - shell: cp ./backup/* ./config_backups/
+      when: "'local' in group_names"
