@@ -1,0 +1,18 @@
+---
+- name: get_bgp
+  register: bgp
+  napalm_get_facts:
+    provider: "{{ cli }}"
+    dev_os: junos
+    filter: 'bgp_neighbors'
+
+- name: Soft_clear_ebgp
+  junos_cli:
+    host: "{{ ansible_host }}"
+    user: "script"
+    passwd: "{{ script_password }}"
+    cli: clear bgp neighbor {{ item.key }} soft
+  with_dict: "{{ bgp.ansible_facts.bgp_neighbors.global['peers'] }}"
+  when:
+    - item.value.is_up == True
+    - item.value.local_as != item.value.remote_as
