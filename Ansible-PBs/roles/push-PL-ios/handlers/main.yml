@@ -1,0 +1,16 @@
+---
+- name: get_bgp
+  register: bgp
+  napalm_get_facts:
+    provider: "{{ cli }}"
+    dev_os: ios
+    filter: 'bgp_neighbors'
+
+- name: Soft_clear_ebgp
+  ios_command:
+    commands: clear ip bgp {{ item.key }} soft out
+    provider: "{{ cli }}"
+  with_dict: "{{ bgp.ansible_facts.bgp_neighbors.global['peers'] }}"
+  when:
+    - item.value.is_up == True
+    - item.value.local_as != item.value.remote_as
