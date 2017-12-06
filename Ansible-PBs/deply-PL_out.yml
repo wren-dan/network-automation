@@ -1,0 +1,36 @@
+---
+
+- name: "pull prefix list from git"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  roles:
+    - git_pull
+
+- name: "Generate templates for IOS/XR/JUNOS"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  roles:
+    - render-PL
+
+- name: "push PL to XR brdr's"
+  hosts: xr
+  connection: local
+  gather_facts: no
+  roles:
+    - push-PL-xr
+
+- name: "push PL to JUNOS brdr's"
+  hosts: junos
+  connection: local
+  gather_facts: no
+  roles:
+    - push-PL-junos
+
+- name: "push PL to IOS brdr's"
+  hosts: ios
+  connection: local
+  gather_facts: no
+  roles:
+    - push-PL-ios
