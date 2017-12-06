@@ -1,0 +1,28 @@
+---
+
+- name: Pull info for config diff
+  napalm_install_config:
+    provider: "{{ cli }}"
+    dev_os: iosxr
+    config_file: /etc/ansible/build/pl-PL-xr.conf
+    commit_changes: False
+    get_diffs: True
+    diff_file: ./diff/xr/{{ inventory_hostname }}_diff
+
+- name: Grab diff
+  shell: cat ./diff/xr/{{ inventory_hostname }}_diff
+  register: commit_changes
+  changed_when: False
+
+- name: Proposed changes listed below, empty brackets [] denotes no changes.
+  debug: msg="{{ commit_changes.stdout_lines }}"
+
+- pause: prompt='Review proposed changes. Press return to continue. Press Ctrl+c and then "a" to abort'
+
+- name: Implement changes for XR brdr's
+  napalm_install_config:
+    provider: "{{ cli }}"
+    dev_os: iosxr
+    config_file: /etc/ansible/build/pl-PL-xr.conf
+    commit_changes: True
+    get_diffs: False
