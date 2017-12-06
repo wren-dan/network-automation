@@ -1,0 +1,42 @@
+---
+- name: Obtain and extract/format interface ip info
+  hosts: core-junos,brdr-junos
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - name: "script_password"
+      prompt: "Enter password for user script"
+      private: yes
+
+  vars:
+
+    - cli:
+        host: "{{ inventory_hostname }}"
+        username: nescript
+        password: "{{ script_password }}"
+
+  tasks:
+
+    - name: Asking for interface info from devices
+      napalm_get_facts:
+        provider: "{{ cli }}"
+        dev_os: junos
+        filter: 'interfaces_ip'
+      register: int
+      changed_when: no
+      check_mode: no
+
+    - name: Build CSV with IP and DNS info
+      template:
+        src: "./build/ip.j2"
+        dest: "./tmp/{{ inventory_hostname }}.csv"
+      changed_when: no
+      check_mode: no
+
+    - name: "Assemble all the device IP data"
+      assemble:
+        src: ./tmp
+        dest: ./build/junos-ip.csv
+      changed_when: no
+      check_mode: no
