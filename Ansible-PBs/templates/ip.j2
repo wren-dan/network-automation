@@ -1,0 +1,7 @@
+{% for key,parent_dict_item in int.ansible_facts.interfaces_ip.iteritems() %}
+{% for key2,nested_value1 in parent_dict_item.iteritems() %}
+{% for key3,nested_value2 in nested_value1.iteritems() %}
+{{key2}},{{key}}.{{inventory_hostname}},{{key3}},{{key3 | ipaddr('revdns')}}
+{% endfor %}
+{% endfor %}
+{% endfor %}
