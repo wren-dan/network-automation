@@ -1,0 +1,46 @@
+---
+- name: "push config to xr devices"
+  hosts: 
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - name: "script_password"
+      prompt: "Enter password for user script"
+      private: yes
+
+  vars:
+
+    - cli:
+        host: "{{ inventory_hostname }}"
+        username: nescript
+        password: "{{ script_password }}"
+
+  tasks:
+
+    - name: Pull data for config diff
+      napalm_install_config:
+        provider: "{{ cli }}"
+        dev_os: iosxr
+        config_file: xr.conf
+        commit_changes: False
+        get_diffs: True
+        diff_file: ./diff/{{ inventory_hostname }}_diff
+
+    - name: Put diff into variable
+      shell: cat ./diff/{{ inventory_hostname }}_diff
+      register: commit_changes
+      changed_when: False
+
+    - name: Proposed changes listed below, empty brackets [] denotes no changes.
+      debug: msg="{{ commit_changes.stdout_lines }}"
+
+    - pause: prompt='Review proposed changes. Press return to continue. Press Ctrl+c and then "a" to abort'
+
+    - name: Implement changes for XR
+      napalm_install_config:
+        provider: "{{ cli }}"
+        dev_os: iosxr
+        config_file: xr.conf
+        commit_changes: True
+        get_diffs: True
