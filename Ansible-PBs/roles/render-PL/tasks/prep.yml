@@ -1,7 +1,11 @@
 ---
-- name: IOS template building
-  template: src=ios-vw_out.conf dest={{ build_dir }}/pl-vw_out-ios.conf
-- name: XR template building
-  template: src=xr-vw_out.conf dest={{ build_dir }}/pl-vw_out-xr.conf
-- name: JUNOS template building
-  template: src=junos-vw_out.conf dest={{ build_dir }}/pl-vw_out-junos.conf
+- name: grabbing prefix list
+  shell: cat "{{ file }}"
+  register: result
+  changed_when: False
+- name: variable work
+  set_fact:
+    pl_source: "{{ result.stdout_lines }}"
+- name: remove prior build temp files
+  file: path="{{ build_dir }}/pl-PL-{{ item }}.conf" state=absent
+  with_items: "{{ types }}"
