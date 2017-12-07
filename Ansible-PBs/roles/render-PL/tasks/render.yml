@@ -1,0 +1,7 @@
+---
+- name: IOS template building
+  template: src=ios-PL.conf dest={{ build_dir }}/pl-PL-ios.conf
+- name: XR template building
+  template: src=xr-PL.conf dest={{ build_dir }}/pl-PL-xr.conf
+- name: JUNOS template building
+  template: src=junos-PL.conf dest={{ build_dir }}/pl-PL-junos.conf
