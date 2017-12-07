@@ -1,0 +1,7 @@
+---
+- name: IOS template building
+  template: src=ios-vw_out.conf dest={{ build_dir }}/pl-vw_out-ios.conf
+- name: XR template building
+  template: src=xr-vw_out.conf dest={{ build_dir }}/pl-vw_out-xr.conf
+- name: JUNOS template building
+  template: src=junos-vw_out.conf dest={{ build_dir }}/pl-vw_out-junos.conf
