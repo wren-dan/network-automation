@@ -1,0 +1,126 @@
+---
+- name: "render and push prefix updates to edge routers"
+  hosts: edge-lab
+  connection: local
+  gather_facts: no
+
+  vars:
+
+    - cli:
+        host: "{{ inventory_hostname }}"
+        username: admin
+        password: <removed>
+
+    - cl_router: False
+    - operation: ""
+    - prefix: ""
+
+  tasks:
+
+    - name: "Clean out ./tmp folder"
+      file:
+        path: ./tmp
+        state: absent
+      run_once: True
+      delegate_to: localhost
+      changed_when: no
+      check_mode: no
+
+    - name: "Initialize ./tmp folder"
+      file:
+        path: ./tmp
+        state: directory
+      run_once: True
+      delegate_to: localhost
+      changed_when: no
+      check_mode: no
+
+    - name: "Updating Master prefix-set file for ADDs"
+      lineinfile:
+        path: ./master/PS_list
+        state: present
+        line: '{{ prefix }}'
+      run_once: True
+      delegate_to: localhost
+      when:
+        - operation == "ADD"
+
+    - name: "Updating Master prefix-set file for REMOVEs"
+      lineinfile:
+        path: ./master/PS_list
+        state: absent
+        line: '{{ prefix }}'
+      run_once: True
+      delegate_to: localhost
+      when:
+        - operation == "REMOVE"
+
+    - name: "Read Master PS list"
+      command: "cat ./master/PS_list"
+      register: PS_list
+      run_once: True
+      delegate_to: localhost
+      changed_when: no
+      check_mode: no
+
+    - name: "Gather bgp data from routers"
+      register: bgp
+      napalm_get_facts:
+        provider: "{{ cli }}"
+        dev_os: iosxr
+        filter: 'bgp_neighbors'
+
+    - name: "Compute which peers are CL"
+      set_fact:
+        cl_router: True
+      with_dict: "{{ bgp.ansible_facts.napalm_bgp_neighbors.global['peers'] }}"
+      when: item.value.remote_as == XXX
+
+    - name: "Render CL router config"
+      template:
+        src: "./templates/ps-cl.j2"
+        dest: "./tmp/{{ inventory_hostname }}.conf"
+      changed_when: no
+      check_mode: no
+      when:
+        - cl_router == True
+
+    - name: "Render non-CL router config"
+      template:
+        src: "./templates/ps-non-cl.j2"
+        dest: "./tmp/{{ inventory_hostname }}.conf"
+      changed_when: no
+      check_mode: no
+      when:
+        - cl_router == False
+
+    - block:
+
+      - name: Implement Prefix Sets on all Routers
+        napalm_install_config:
+          provider: "{{ cli }}"
+          dev_os: iosxr
+          config_file: "./tmp/{{ inventory_hostname }}.conf"
+          commit_changes: True
+          get_diffs: True
+
+      rescue:
+
+        - name: Capture log data
+          shell: egrep 'failed|error' ./tmp/ansible.log
+          register: logs
+          run_once: True
+          delegate_to: localhost
+          changed_when: False
+
+        - name: Send email on failures
+          mail:
+            host: smtp.xxx
+            from: xxx <removed>
+            to: xxx <removed>
+            subject: ps-scrub script failures
+            body: "The following Failures were seen executing {{ operation }} on {{ prefix }}: |\n{{ logs.stdout }}"
+          run_once: True
+          delegate_to: localhost
+          changed_when: False
+          
