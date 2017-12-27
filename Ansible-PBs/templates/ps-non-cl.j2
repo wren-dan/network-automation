@@ -1,0 +1,12 @@
+{% if not PS_list.stdout_lines %}
+prefix-set PS-SCRUB
+end-set
+{% else %}
+prefix-set PS-SCRUB
+{% for line in PS_list.stdout_lines %}
+{{ line }}{% if not loop.last %},
+{% endif %}
+{% endfor %}
+
+end-set
+{% endif %}
