@@ -1,0 +1,116 @@
+---
+- name: "render and push prefix updates to edge routers"
+  hosts: edge-lab
+  connection: local
+  gather_facts: no
+
+  vars:
+
+    - cli:
+        host: "{{ inventory_hostname }}"
+        username: admin
+        password: <removed>
+
+    - cl_router: False
+    - operation: ""
+    - prefix: ""
+	  - exe: ""
+
+  tasks:
+
+      - name: "Clean out ./tmp folder"
+      file:
+        path: ./tmp
+        state: absent
+      run_once: True
+      delegate_to: localhost
+      changed_when: no
+
+    - name: "Initialize ./tmp folder"
+      file:
+        path: ./tmp
+        state: directory
+      run_once: True
+      delegate_to: localhost
+      changed_when: no
+	  
+    - name: "Gather bgp data from routers"
+      register: bgp
+      napalm_get_facts:
+        provider: "{{ cli }}"
+        dev_os: iosxr
+        filter: 'bgp_neighbors'
+
+    - name: "Compute which peers are CL"
+      set_fact:
+        cl_router: True
+      with_dict: "{{ bgp.ansible_facts.napalm_bgp_neighbors.global['peers'] }}"
+      when: item.value.remote_as == XXX
+
+    - name: "Render CL router config for ADDs"
+      set_fact:
+        exe: "edit prefix-set PS-CL-ALLOW inline add {{ prefix }}"
+      changed_when: no
+      check_mode: no
+      when:
+        - operation == "ADD"
+        - cl_router == True
+
+    - name: "Render CL router config for REMOVEs"
+      set_fact:
+        exe: "edit prefix-set PS-CL-ALLOW inline remove {{ prefix }}"
+      changed_when: no
+      check_mode: no
+      when:
+        - operation == "REMOVE"
+        - cl_router == True
+
+    - name: "Render non-CL router config for ADDs"
+      set_fact:
+        exe: "edit prefix-set PS-SCRUB inline add {{ prefix }}"
+      changed_when: no
+      check_mode: no
+      when:
+        - operation == "ADD"
+        - cl_router == False
+
+    - name: "Render non-CL router config for REMOVEs"
+      set_fact:
+        exe: "edit prefix-set PS-SCRUB inline remove {{ prefix }}"
+      changed_when: no
+      check_mode: no
+      when:
+        - operation == "REMOVE"
+        - cl_router == False
+
+    - block:
+
+      - name: "Push change out to all edge routers"
+        iosxr_command:
+          provider: "{{ cli }}"
+          commands:
+            - command: "{{ exe }}"
+              prompt: "Proceed with commmit \\(yes/no\\)\\?"
+              answer: 'yes'
+        when:
+          - exe != ""
+
+      rescue:
+
+        - name: Capture log data
+          shell: egrep 'failed|error' ./tmp/ansible.log
+          register: logs
+          run_once: True
+          delegate_to: localhost
+          changed_when: False
+
+        - name: Send email on failures
+          mail:
+            host: smtp.xxx
+            from: xxx <removed>
+            to: xxx <removed>
+            subject: ps-scrub script failures
+            body: "The following Failures were seen executing {{ operation }} on {{ prefix }}: |\n{{ logs.stdout }}"
+          run_once: True
+          delegate_to: localhost
+          changed_when: False
