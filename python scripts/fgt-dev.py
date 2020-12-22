@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#GET known devices data from CMT Office FGT, Compare with last GET, email if new devices are present.
+#GET known devices data from Office FGT, Compare with last GET, email if new devices are present.
 
 import requests
 import smtplib
