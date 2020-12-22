@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+#Purpose: Parse ASA config file for Subnet's/Host's and allowed Port's for VPN Tunnel's and print them out
 #todo: mark inactive as not active
 
 import sys
@@ -68,42 +69,43 @@ class grp_search:
                 if item not in _acls: _acls.append(item)
         return(_objects, _acls)
 
-
 if __name__ == "__main__":
-
-    with open('./asa-configs') as configs:
+    
+    with open('/mnt/c/users/me/Documents/project/misc/asa-configs') as configs:
         config_parse = CiscoConfParse(configs.readlines())
 
     vpns = []; crypto_maps = []; crypto_peers = []
 
-    crypto_peers = config_parse.find_objects(r'^crypto map _Prod_map.*peer')
+    crypto_peers = config_parse.find_objects(r'^crypto map Outside_map.*peer')
 
-    crypto_maps = config_parse.find_objects(r'^crypto map _Prod_map.*match address')
+    crypto_maps = config_parse.find_objects(r'^crypto map Outside_map.*match address')
 
     for line in crypto_peers:
         linelist = line.text.split(" ")
-        index = linelist.index("_Prod_map")
+        index = linelist.index("Outside_map")
         vpns.append({'peer': linelist[index+4].strip(), 'map_id': linelist[index+1]})
 
     for line in crypto_maps:
         linelist = line.text.split(" ")
-        index = linelist.index("_Prod_map")
+        index = linelist.index("Outside_map")
         for vpn in vpns:
             if linelist[index+1] == vpn.get('map_id'):
                 vpn['crypto_map'] = linelist[index+4].strip()
 
     for vpn in vpns:
-        vpn['groups'] = []; vpn['grp_obj'] = []
+        vpn['groups'] = []; vpn['grp_obj'] = []; vpn['legacy'] = False
         for item in config_parse.find_children(vpn['crypto_map']):
+            if len(item) >=7 and item.split().pop(6) == "Prod_grp": 
+                vpn['legacy'] = True
             if item.split().pop(1) == vpn['crypto_map'] and item.split().pop(8) and item.split().pop(8) not in vpn['groups'] and item.strip().split().pop() != "inactive":
                 vpn['groups'].append(item.split().pop(8))
-                
+               
     for vpn in vpns:
         for grp in vpn['groups']:
             vpn['grp_obj'].append(grp_search(grp)) 
 
     for vpn in vpns:
-        print("*** Peer: " + vpn['peer'] + " Map-Seq " + vpn['map_id'] + " Groups: " + " ".join(vpn['groups']) + " ***")
+        print("*** Peer: " + vpn['peer'] + " Map-Seq: " + vpn['map_id'] + " LegacyIP: " + str(vpn['legacy']) + " Groups: " + " ".join(vpn['groups']) + " ***")
         for obj in vpn['grp_obj']:
             if obj.p_in: print("Inbound Ports: " + " ".join(sorted(set(obj.p_in))))
             if obj.p_out: print("Outbound Ports: " + " ".join(sorted(set(obj.p_out))))
@@ -112,4 +114,3 @@ if __name__ == "__main__":
                 for name, ip in obj.hosts.items():
                     print(name + " " + ip)
         print('\n')
-
